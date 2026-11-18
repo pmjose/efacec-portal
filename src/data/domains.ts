@@ -20,12 +20,12 @@ export type Domain = {
   questions: { q: string; a: string }[];
 };
 
-const MONTHS = ['Dez', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov'];
-function seeded(seed: number) {
+export const MONTHS = ['Dez', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov'];
+export function seeded(seed: number) {
   let s = seed;
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 }
-function series(seed: number, keys: [string, number, number][], labels = MONTHS) {
+export function series(seed: number, keys: [string, number, number][], labels = MONTHS) {
   const r = seeded(seed);
   return labels.map((m, i) => {
     const o: Record<string, string | number> = { m };
@@ -35,7 +35,7 @@ function series(seed: number, keys: [string, number, number][], labels = MONTHS)
     return o;
   });
 }
-const pie = (items: [string, number][]) => items.map(([m, v]) => ({ m, v }));
+export const pie = (items: [string, number][]) => items.map(([m, v]) => ({ m, v }));
 
 export const domains: Domain[] = [
   {
@@ -505,7 +505,8 @@ export const domains: Domain[] = [
 ];
 
 export const executiveQuestions = [
-  { q: 'Resume o estado do grupo hoje', a: 'Volume de negócios YTD de **€468 M** (+16%), carteira de transformadores de €412 M. 4 ativos críticos em monitorização e 6 ações de agentes a aguardar aprovação humana.' },
-  { q: 'Que decisões aguardam aprovação?', a: '6 decisões: inspeção DGA (Tâmega), firmware BCU 500, OTA carregadores EUA, revisão de preços Beira Alta, hedging de cobre e factoring Eskom.' },
-  { q: 'Qual o valor gerado pelo Snowflake?', a: 'Estimativa de **€14,7 M/ano**: manutenção preditiva (€6,1 M), supply chain (€4,2 M), serviço remoto (€1,8 M), reporte automático (€2,6 M).' },
+  { q: 'Resume o estado do grupo hoje', a: 'Volume de negócios YTD de **€468 M** (+16%), encomendas de €531 M e carteira de **€1,12 mM**. 3 alertas críticos: rutura de aço GO em 23 dias, TP 345 kV Dominion Energy e concurso REN a 9 dias do fecho.' },
+  { q: 'Quais os maiores riscos na cadeia de abastecimento?', a: 'Aço de grão orientado: **48%** concentrado na ThyssenKrupp, atraso de 8 dias e rutura prevista a 11 Dez. Afeta OF-7781, OF-7790 e OF-7822. Mitigação: qualificar POSCO e resequenciar produção.' },
+  { q: 'Que decisões aguardam a minha aprovação?', a: 'Decisões com humano no circuito em Supply Chain (hedging de cobre), Comercial (preço REN), Serviços (inspeção DGA, renovação de contratos), Pessoas (retenção em Automação) e Finanças (factoring Eskom). Ver **Decisões & Agentes**.' },
+  { q: 'Qual o valor gerado pelo Nexus?', a: 'Estimativa de **€14,7 M/ano**: manutenção preditiva (€6,1 M), supply chain (€4,2 M), serviço remoto (€1,8 M), reporte automático (€2,6 M).' },
 ];

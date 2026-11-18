@@ -40,7 +40,7 @@ export default function Home() {
         <img src="./logos/efacec-Logo-24d9b56a.png" height={26} alt="Efacec" />
         <span className="muted">×</span>
         <img src="./logos/snowflake.svg" height={22} alt="Snowflake" style={{ filter: 'brightness(0) invert(1)' }} />
-        <Link to="/portal" className="btn" style={{ padding: '8px 16px', fontSize: 14 }}>Portal <ArrowRight size={14} /></Link>
+        <Link to="/portal" className="btn" style={{ padding: '8px 16px', fontSize: 14 }}>Nexus <ArrowRight size={14} /></Link>
       </header>
 
       <section ref={hero} style={{ height: '130vh', position: 'relative' }}>
@@ -57,10 +57,10 @@ export default function Home() {
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6, duration: 1 }} className="muted"
             style={{ fontSize: 21, maxWidth: 720, marginTop: 28, lineHeight: 1.5 }}>
-            A Efacec e o Snowflake AI Data Cloud — da bobinagem de um transformador de 400 kV ao último carregador HV350, uma plataforma única de dados, IA e agentes.
+            Apresentamos o Efacec Nexus — a plataforma de analytics, insights e IA de toda a Efacec. Da compra de aço magnético ao último carregador HV350, construída sobre o Snowflake AI Data Cloud.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }} style={{ display: 'flex', gap: 12, marginTop: 40 }}>
-            <Link to="/portal" className="btn">Entrar no portal <ArrowRight size={16} /></Link>
+            <Link to="/portal" className="btn">Entrar no Nexus <ArrowRight size={16} /></Link>
             <a href="#valor" className="btn-ghost">Descobrir o valor</a>
           </motion.div>
         </motion.div>
@@ -114,7 +114,7 @@ export default function Home() {
 
       <Section style={{ textAlign: 'center', paddingBottom: 160 }}>
         <h2 style={{ fontSize: 'clamp(40px,6vw,80px)', fontWeight: 800, letterSpacing: '-0.045em' }}>Pronto para ver a rede <span className="grad-text">a pensar</span>?</h2>
-        <Link to="/portal" className="btn" style={{ marginTop: 40, fontSize: 18, padding: '16px 30px' }}>Abrir o Portal Efacec <ArrowRight size={18} /></Link>
+        <Link to="/portal" className="btn" style={{ marginTop: 40, fontSize: 18, padding: '16px 30px' }}>Abrir o Efacec Nexus <ArrowRight size={18} /></Link>
       </Section>
       <div className="noise" />
     </div>
