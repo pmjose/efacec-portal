@@ -27,7 +27,10 @@ export default function MapView({ assets, height = 460 }: { assets: Asset[]; hei
           `<div style="font-size:13px;min-width:180px"><div style="font-weight:600;margin-bottom:4px">${a.name}</div><div style="color:#9aa3b5;font-size:12px">${a.type}</div><div style="margin-top:8px;display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;border-radius:50%;background:${c}"></span>${LABEL[a.status]}</div><div style="margin-top:4px;font-size:12px">${a.detail}</div></div>`))
         .addTo(map);
     });
-    map.on('load', () => { if (assets.length > 1) map.fitBounds(bounds, { padding: 70, maxZoom: 7, duration: 1800 }); });
+    map.on('load', () => {
+      if (assets.length > 1) map.fitBounds(bounds, { padding: 70, maxZoom: 7, duration: 1800 });
+      else if (assets.length === 1) map.flyTo({ center: [assets[0].lng, assets[0].lat], zoom: 11, duration: 1800 });
+    });
     return () => map.remove();
   }, [assets]);
   return <div ref={el} style={{ height, borderRadius: 16, overflow: 'hidden' }} />;

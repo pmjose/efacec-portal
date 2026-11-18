@@ -91,3 +91,12 @@ table.t tr:hover td { background: rgba(255,255,255,0.03); }
               radial-gradient(40% 40% at 60% 95%, rgba(243,146,0,0.12), transparent 70%);
   animation: drift 24s ease-in-out infinite alternate; }
 @keyframes drift { to { transform: translate3d(4%, -3%, 0) scale(1.08); } }
+
+/* Esquemas — animações */
+.flow { stroke-dasharray: 6 10; animation: flow 1.2s linear infinite; }
+.flow-slow { animation: flow 3s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -32; } }
+.spin-slow { animation: spin 2.5s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hs-pulse { animation: hsp 1.6s ease-out infinite; }
+@keyframes hsp { 0% { transform: scale(.8); opacity: .5; } 100% { transform: scale(2.2); opacity: 0; } }

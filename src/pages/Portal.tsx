@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { modules, findModule, allAgents } from '../data/modules';
+import { customers, employees, assets, findCustomer, findEmployee, findAsset } from '../data/c360';
 import { executiveQuestions } from '../data/domains';
 import ChatPanel from '../components/ChatPanel';
 import { FiltersProvider, useFilters, BUS, REGIONS, isFiltered } from '../filters';
@@ -20,8 +21,15 @@ function GlobalSearch() {
   const hits = useMemo(() => {
     if (q.length < 2) return [];
     const t = q.toLowerCase();
-    return modules.flatMap(m => m.sections.map(s => ({ m, s })))
-      .filter(({ m, s }) => (m.name + ' ' + s.label + ' ' + JSON.stringify(s.blocks)).toLowerCase().includes(t)).slice(0, 7);
+    const ent = [
+      ...customers.filter(c => (c.name + c.segment).toLowerCase().includes(t)).map(c => ({ key: 'c' + c.id, icon: 'Building2', color: '#E30613', label: c.name.split(' — ')[0], sub: 'Cliente 360', to: `/portal/360/clientes/${c.id}` })),
+      ...employees.filter(e => (e.name + e.role).toLowerCase().includes(t)).map(e => ({ key: 'e' + e.id, icon: 'IdCard', color: '#A855F7', label: e.name, sub: 'Colaborador 360', to: `/portal/360/colaboradores/${e.id}` })),
+      ...assets.filter(a => (a.name + a.id + a.site).toLowerCase().includes(t)).map(a => ({ key: 'a' + a.id, icon: 'Cpu', color: '#29B5E8', label: a.id, sub: 'Ativo 360 · ' + a.name, to: `/portal/360/ativos/${a.id}` })),
+    ];
+    const mods = modules.flatMap(m => m.sections.map(s => ({ m, s })))
+      .filter(({ m, s }) => (m.name + ' ' + s.label + ' ' + JSON.stringify(s.blocks)).toLowerCase().includes(t))
+      .map(({ m, s }) => ({ key: m.slug + s.id, icon: m.icon, color: m.color, label: m.name, sub: s.label, to: `/portal/${m.slug}/${s.id}` }));
+    return [...ent, ...mods].slice(0, 8);
   }, [q]);
   return (
     <div style={{ position: 'relative' }}>
@@ -31,11 +39,11 @@ function GlobalSearch() {
       </div>
       {hits.length > 0 && (
         <div className="glass" style={{ position: 'absolute', top: 50, left: 0, right: 0, zIndex: 80, padding: 6, background: 'rgba(12,15,24,.96)' }}>
-          {hits.map(({ m, s }) => (
-            <button key={m.slug + s.id} onClick={() => { nav(`/portal/${m.slug}/${s.id}`); setQ(''); }}
+          {hits.map(h => (
+            <button key={h.key} onClick={() => { nav(h.to); setQ(''); }}
               style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', padding: '9px 10px', borderRadius: 10, textAlign: 'left', fontSize: 13 }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
-              <Icon name={m.icon} size={15} color={m.color} /><span>{m.name}</span><span className="muted">› {s.label}</span>
+              <Icon name={h.icon} size={15} color={h.color} /><span>{h.label}</span><span className="muted">› {h.sub}</span>
             </button>
           ))}
         </div>
@@ -63,10 +71,20 @@ function FilterBar() {
 
 function Shell() {
   const loc = useLocation();
-  const [, , slug, section] = loc.pathname.split('/');
+  const [, , slug, section, entity] = loc.pathname.split('/');
   const m = findModule(slug);
+  const is360 = slug === '360';
+  const kind360 = { clientes: 'Cliente 360', colaboradores: 'Colaborador 360', ativos: 'Ativo 360' }[section ?? ''] ?? '';
+  const ent = is360 ? section === 'clientes' ? findCustomer(entity) : section === 'colaboradores' ? findEmployee(entity) : findAsset(entity) : undefined;
+  const entName = ent ? ('id' in ent && section === 'ativos' ? (ent as { id: string }).id : (ent as { name: string }).name.split(' — ')[0]) : '';
+  const entQuestions = ent && 'questions' in ent ? (ent as { questions: { q: string; a: string }[] }).questions
+    : ent && section === 'ativos' ? (() => { const a = ent as ReturnType<typeof findAsset> & object; return [
+      { q: 'Qual o estado deste ativo?', a: `**${a.name}** — saúde **${a.health}/100**. ${a.hotspots.filter(h => h.status !== 'ok').map(h => `${h.label}: ${h.value}`).join('; ') || 'Sem alertas ativos.'}` },
+      { q: 'Qual a vida útil remanescente?', a: `Cortex ML estima **${a.prediction.rul}** (probabilidade de falha ${a.prediction.failProb}). Principal fator: ${a.prediction.driver}.` },
+      { q: 'O que recomendas fazer?', a: a.prediction.action },
+    ]; })() : undefined;
   const sectionLabel = m?.sections.find(s => s.id === section)?.label ?? m?.sections[0].label;
-  const pageName = m?.name ?? (slug === 'decisoes' ? 'Decisões & Agentes' : slug === 'dados' ? 'Catálogo de Dados' : 'Cockpit Executivo');
+  const pageName = m?.name ?? (is360 ? kind360 : slug === 'decisoes' ? 'Decisões & Agentes' : slug === 'dados' ? 'Catálogo de Dados' : 'Cockpit Executivo');
 
   return (
     <div className="shell">
@@ -79,6 +97,10 @@ function Shell() {
         <div className="label">Início</div>
         <NavLink end to="/portal" className="nav"><Icons.LayoutDashboard size={18} /> Cockpit Executivo</NavLink>
         <NavLink to="/portal/decisoes" className="nav"><Icons.Inbox size={18} /> Decisões & Agentes <span className="chip" style={{ marginLeft: 'auto', padding: '1px 7px', background: '#F3920033', borderColor: '#F39200' }}>{pending}</span></NavLink>
+        <div className="label">Visão 360</div>
+        <NavLink to="/portal/360/clientes" className="nav"><Icons.Building2 size={18} /> Cliente 360</NavLink>
+        <NavLink to="/portal/360/colaboradores" className="nav"><Icons.IdCard size={18} /> Colaborador 360</NavLink>
+        <NavLink to="/portal/360/ativos" className="nav"><Icons.Cpu size={18} /> Ativo 360</NavLink>
         <div className="label">Funções</div>
         {modules.filter(x => x.group === 'funcoes').map(x => <NavLink key={x.slug} to={`/portal/${x.slug}`} className="nav"><Icon name={x.icon} color={x.color} /> {x.short}</NavLink>)}
         <div className="label">Unidades de negócio</div>
@@ -107,17 +129,16 @@ function Shell() {
           <div className="muted" style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
             <Link to="/portal">Nexus</Link><Icons.ChevronRight size={13} />
             {m ? <><Link to={`/portal/${m.slug}`}>{m.group === 'negocio' ? 'Unidades de negócio' : 'Funções'}</Link><Icons.ChevronRight size={13} /><Link to={`/portal/${m.slug}`}>{m.name}</Link><Icons.ChevronRight size={13} /><span style={{ color: '#fff' }}>{sectionLabel}</span></>
+              : is360 ? <><span>Visão 360</span><Icons.ChevronRight size={13} />{ent ? <><Link to={`/portal/360/${section}`}>{kind360}</Link><Icons.ChevronRight size={13} /><span style={{ color: '#fff' }}>{entName}</span></> : <span style={{ color: '#fff' }}>{kind360}</span>}</>
               : <span style={{ color: '#fff' }}>{pageName}</span>}
           </div>
           <FilterBar />
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div key={slug ?? 'home'} initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .35 }}>
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        <motion.div key={is360 ? loc.pathname : slug ?? 'home'} initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: .35 }}>
+          <Outlet />
+        </motion.div>
       </main>
-      <ChatPanel context={m ? `${m.name} › ${sectionLabel}` : pageName} questions={m?.questions ?? executiveQuestions} />
+      <ChatPanel context={m ? `${m.name} › ${sectionLabel}` : ent ? `${kind360} › ${entName}` : pageName} questions={m?.questions ?? entQuestions ?? executiveQuestions} />
     </div>
   );
 }
