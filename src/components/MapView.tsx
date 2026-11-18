@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { Asset } from '../data/domains';
+
+maplibregl.setWorkerUrl(workerUrl);
 
 const KEY = import.meta.env.VITE_CARTO_KEY as string | undefined;
 const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' + (KEY ? `?api_key=${KEY}` : '');
