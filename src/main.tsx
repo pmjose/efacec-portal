@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
+import { ToastProvider } from './ui/toast';
 import Gate from './pages/Gate';
 import Home from './pages/Home';
 import Portal from './pages/Portal';
@@ -14,6 +15,7 @@ const Guard = ({ children }: { children: React.ReactElement }) =>
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <ToastProvider>
     <HashRouter>
       <Routes>
         <Route path="/" element={<Gate />} />
@@ -33,5 +35,6 @@ createRoot(document.getElementById('root')!).render(
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </HashRouter>
+    </ToastProvider>
   </StrictMode>
 );

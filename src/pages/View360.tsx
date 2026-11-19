@@ -9,6 +9,27 @@ import ChartCard from '../components/ChartCard';
 import MapView from '../components/MapView';
 import Schematic from '../components/Schematic';
 import { DataTable } from '../components/Blocks';
+import { useToast } from '../ui/toast';
+import { downloadPdf, type PdfLine } from '../utils/download';
+
+const H = (t: string): PdfLine => ({ text: t, size: 13, bold: true, gap: 4 });
+const B = (t: string, gap = 0): PdfLine => ({ text: t, gap });
+const sp: PdfLine = { text: '', gap: 6 };
+function ReportBtn({ onClick }: { onClick: () => void }) {
+  return <button className="btn-ghost" style={{ padding: '8px 14px', fontSize: 13 }} onClick={onClick}><I.FileDown size={14} /> Relatório 360</button>;
+}
+function NbaButton({ title, value }: { title: string; value: string }) {
+  const toast = useToast();
+  const [st, setSt] = useState<'idle' | 'run' | 'done'>('idle');
+  const go = () => {
+    if (st !== 'idle') return;
+    setSt('run');
+    setTimeout(() => { setSt('done'); toast('action', 'Próxima melhor ação iniciada', `${title} · tarefa criada no Salesforce e atribuída ao gestor de conta (${value})`); }, 900);
+  };
+  return <button className={st === 'done' ? 'btn-ghost' : 'btn'} style={{ padding: '6px 12px', fontSize: 12 }} onClick={go}>
+    {st === 'idle' ? 'Executar' : st === 'run' ? <><I.Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> A executar…</> : <><I.Check size={12} /> Em curso</>}
+  </button>;
+}
 
 const SC: Record<Status, string> = { ok: '#22c55e', aviso: '#f59e0b', critico: '#ef4444' };
 const SL: Record<Status, string> = { ok: 'Operacional', aviso: 'Atenção', critico: 'Crítico' };
@@ -123,10 +144,26 @@ export function CustomerDetail() {
   const { id } = useParams();
   const c = findCustomer(id);
   const [tab, setTab] = useState('geral');
+  const toast = useToast();
   if (!c) return <Navigate to="/portal/360/clientes" replace />;
   const own = assets.filter(a => a.customer === c.id);
   const mgr = findEmployee(c.manager);
   const team = employees.filter(e => e.customers.includes(c.id));
+  const report = () => {
+    downloadPdf(`Cliente360_${c.name.split(' — ')[0]}`, `Cliente 360 — ${c.name}`, `${c.segment} · ${c.hq}, ${c.country} · cliente desde ${c.since}`, [
+      H('Resumo da conta'), B(`Tier: ${c.tier}   ·   Saúde da conta: ${c.health}/100   ·   NPS: ${c.nps}`), B(`Gestor de conta: ${mgr?.name ?? '—'}`),
+      B(`Vendas 12 meses: ${c.revenue12m}   ·   Carteira: ${c.backlog}   ·   Em aberto: ${c.openAR} (DSO ${c.dso} dias)   ·   Margem: ${c.margin}`, 8),
+      H('Próximas melhores ações (Cortex)'), ...c.nba.flatMap(n => [{ text: `${n.title} — ${n.value}`, bold: true }, B(n.text, 4)]), sp,
+      H('Riscos'), ...c.risks.map(x => B(`•  ${x}`)), sp,
+      H('Base instalada monitorizada'), ...own.map(a => B(`•  ${a.id} — ${a.name} · ${a.site} · saúde ${a.health} · ${SL[a.status]}`)), sp,
+      H('Contratos'), ...c.contracts.map(([id, o, v, d]) => B(`•  ${id} — ${o} · ${v} · fim ${d}`)), sp,
+      H('Oportunidades'), ...c.opportunities.map(([o, v, f, p]) => B(`•  ${o} · ${v} · ${f} · ${p}`)), sp,
+      H('Serviço'), ...c.tickets.map(([id, d, e]) => B(`•  ${id} — ${d} · ${e}`)), sp,
+      H('Atividade recente'), ...c.timeline.map(t => B(`${t.date} · ${t.who}: ${t.text}`)), sp,
+      H('Contactos'), ...c.contacts.map(([n, r, p]) => B(`•  ${n} — ${r} (${p})`)),
+    ]);
+    toast('download', 'Relatório Cliente 360 gerado', c.name);
+  };
   return <div>
     <div className="glass" style={{ padding: 24, display: 'flex', gap: 22, alignItems: 'center' }}>
       <div style={{ width: 80, height: 80, borderRadius: 22, display: 'grid', placeItems: 'center', fontSize: 26, fontWeight: 800, background: 'linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.04))', border: '1px solid var(--border)' }}>{c.logo}</div>
@@ -139,7 +176,7 @@ export function CustomerDetail() {
           <span className="chip muted"><I.Database size={11} /> Salesforce · SAP SD · SAP CS</span>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 18 }}><Ring v={c.health} label="Saúde da conta" /><Ring v={c.nps} label="NPS" color="#29B5E8" /></div>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}><Ring v={c.health} label="Saúde da conta" /><Ring v={c.nps} label="NPS" color="#29B5E8" /><ReportBtn onClick={report} /></div>
     </div>
     <div className="grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginTop: 18 }}>
       {[['Vendas 12 meses', c.revenue12m, 'SAP SD · faturado'], ['Carteira', c.backlog, 'por entregar'], ['Em aberto', c.openAR, `DSO ${c.dso} dias`], ['Margem bruta', c.margin, '12 meses'], ['Ativos monitorizados', String(own.length), `${own.filter(a => a.status !== 'ok').length} com alertas`]].map(([l, v, d], i) =>
@@ -158,7 +195,7 @@ export function CustomerDetail() {
         <div className="grid" style={{ gridTemplateColumns: `repeat(${c.nba.length + 1},1fr)`, gap: 12 }}>
           {c.nba.map(n => <div key={n.title} style={{ padding: 16, borderRadius: 14, background: 'rgba(41,181,232,.06)', border: '1px solid rgba(41,181,232,.25)' }}>
             <div style={{ fontWeight: 600 }}>{n.title}</div><div className="muted" style={{ fontSize: 13, margin: '6px 0 10px', lineHeight: 1.5 }}>{n.text}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><b style={{ color: '#22c55e', fontSize: 13 }}>{n.value}</b><button className="btn" style={{ padding: '6px 12px', fontSize: 12 }}>Executar</button></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><b style={{ color: '#22c55e', fontSize: 13 }}>{n.value}</b><NbaButton title={n.title} value={n.value} /></div>
           </div>)}
           <div style={{ padding: 16, borderRadius: 14, background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.25)' }}>
             <div style={{ fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center' }}><I.AlertTriangle size={15} color="#ef4444" /> Riscos</div>
@@ -231,8 +268,22 @@ export function EmployeeDetail() {
   const { id } = useParams();
   const e = findEmployee(id);
   const [tab, setTab] = useState('perfil');
+  const toast = useToast();
   if (!e) return <Navigate to="/portal/360/colaboradores" replace />;
   const risk = { Baixo: 'ok', 'Médio': 'aviso', Alto: 'critico' }[e.wellbeing.flightRisk] as Status;
+  const report = () => {
+    downloadPdf(`Colaborador360_${e.name}`, `Colaborador 360 — ${e.name}`, `${e.role} · ${e.unit} · CONFIDENCIAL — uso restrito a chefia e RH`, [
+      H('Perfil'), B(`Local: ${e.site}   ·   Chefia: ${e.manager}   ·   Grau: ${e.grade}   ·   ${e.type}`), B(`Na Efacec desde ${e.since} (${2026 - e.since} anos)   ·   Línguas: ${e.languages}`, 8),
+      H('Indicadores'), ...e.kpis.map(([l, v]) => B(`•  ${l}: ${v}`)), sp,
+      H('Competências (0–100)'), ...e.skills.map(x => B(`•  ${x.s}: ${x.v}`)), sp,
+      H('Certificações'), ...e.certs.map(([n, d, st]) => B(`•  ${n} — validade ${d}${st !== 'ok' ? '  (renovar)' : ''}`)), sp,
+      H('Formação recente'), ...e.training.map(([n, d, dt]) => B(`•  ${n} · ${d} · ${dt}`)), sp,
+      H('Percurso'), ...e.career.map(x => B(`•  ${x.year} — ${x.role}`)), sp,
+      H('Atribuições ativas'), ...e.assignments.map(([a, b, c]) => B(`•  ${a} — ${b} (${c})`)), sp,
+      H('Desempenho'), ...e.performance.map(p => B(`•  ${p.m}: ${p['Avaliação']} (média ${p['Média']})`)),
+    ]);
+    toast('download', 'Relatório Colaborador 360 gerado', `${e.name} · documento confidencial`);
+  };
   return <div>
     <div className="glass" style={{ padding: 24, display: 'flex', gap: 22, alignItems: 'center' }}>
       <Avatar t={e.initials} size={84} />
@@ -244,7 +295,7 @@ export function EmployeeDetail() {
           <Field k="Local" v={e.site} /><Field k="Chefia" v={e.manager} /><Field k="Na Efacec desde" v={`${e.since} (${2026 - e.since} anos)`} /><Field k="Línguas" v={e.languages} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 18 }}><Ring v={e.wellbeing.engagement} label="Envolvimento" color="#A855F7" /><Ring v={Math.round(e.performance.at(-1)!['Avaliação'] * 20)} label="Desempenho" /></div>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}><ReportBtn onClick={report} /><Ring v={e.wellbeing.engagement} label="Envolvimento" color="#A855F7" /><Ring v={Math.round(e.performance.at(-1)!['Avaliação'] * 20)} label="Desempenho" /></div>
     </div>
     <div className="grid kpis" style={{ marginTop: 18 }}>
       {e.kpis.map(([l, v], i) => <KpiCard key={l} i={i} k={{ label: l, value: v, delta: '12 meses', up: true, good: true }} />)}
@@ -327,11 +378,28 @@ export function AssetDetail() {
   const a = findAsset(id);
   const [tab, setTab] = useState('twin');
   const [sel, setSel] = useState<string | undefined>();
+  const toast = useToast();
   const chart = useMemo(() => a && ({ id: 'tl-' + a.id, title: a.telemetry.title, subtitle: `Unidade: ${a.telemetry.unit} · Snowpipe Streaming`, kind: 'area' as const, keys: a.telemetry.keys, data: a.telemetry.data,
     insight: a.prediction.driver, forecast: `Vida útil remanescente: ${a.prediction.rul} · probabilidade de falha ${a.prediction.failProb}.`, action: a.prediction.action }), [a]);
   if (!a || !chart) return <Navigate to="/portal/360/ativos" replace />;
   const cu = findCustomer(a.customer)!;
   const cur = a.hotspots.find(h => h.id === sel);
+  const head: PdfLine[] = [
+    B(`Equipamento: ${a.id}   ·   N.º de série: ${a.serial}   ·   Modelo: ${a.model}`), B(`Cliente: ${cu.name}   ·   Local: ${a.site}`), B(`Comissionamento: ${a.commissioned}   ·   Garantia: ${a.warrantyUntil}`, 8),
+  ];
+  const specs: PdfLine[] = [H('Características técnicas'), ...a.specs.map(([k, v]) => B(`•  ${k}: ${v}`)), sp];
+  const state: PdfLine[] = [H('Estado e monitorização'), B(`Índice de saúde: ${a.health}/100 · ${SL[a.status]}`), ...a.hotspots.map(h => B(`•  ${h.label}: ${h.value}  [${SL[h.status]}]`)), sp,
+    H('Diagnóstico Cortex'), B(`Vida útil remanescente: ${a.prediction.rul}   ·   Probabilidade de falha: ${a.prediction.failProb}`), B(`Causa provável: ${a.prediction.driver}`), B(`Ação recomendada: ${a.prediction.action}`), sp];
+  const hist: PdfLine[] = [H('Histórico de intervenções'), ...a.history.map(h => B(`${h.date} · ${h.type} · ${findEmployee(h.tech)?.name ?? h.tech}: ${h.text}`))];
+  const report = () => { downloadPdf(`Ativo360_${a.id}`, `Ativo 360 — ${a.name}`, `${KIND_LABEL[a.kind]} · ${a.id}`, [...head, ...state, ...specs, ...hist]); toast('download', 'Relatório Ativo 360 gerado', `${a.id} · ${a.name}`); };
+  const doc = (n: string) => {
+    const body: PdfLine[] = /FAT|SAT/.test(n) ? [...head, H(`${n} — resumo de ensaios`), B('Ensaios de rotina conforme norma aplicável: relação de transformação, resistência de enrolamentos, perdas em vazio e em carga, impedância de curto-circuito, ensaios dielétricos e de descargas parciais.'), B('Resultado: CONFORME. Todos os valores dentro das tolerâncias contratuais.', 8), ...specs]
+      : /Manual|O&M|instalação|Plano/.test(n) ? [...head, H(n), B('1. Segurança — trabalhos apenas por pessoal qualificado, com consignação e verificação de ausência de tensão.'), B('2. Inspeção periódica — verificar indicadores, níveis, temperaturas e alarmes do sistema de monitorização Nexus.'), B('3. Manutenção preventiva — conforme plano anual e recomendações do gémeo digital.', 8), ...specs, ...hist]
+      : /DGA|Relatório|uptime|DP|ciberseg/i.test(n) ? [...head, ...state, ...hist]
+      : [...head, H(n), B('Documento técnico controlado. Versão em vigor disponível no repositório documental Efacec.'), sp, ...specs];
+    downloadPdf(`${a.id}_${n}`, n, `${a.name} · ${a.id}`, body);
+    toast('download', 'Documento transferido', `${n} · ${a.id}`);
+  };
   return <div>
     <div className="glass" style={{ padding: 24, display: 'flex', gap: 22, alignItems: 'center', borderLeft: `3px solid ${SC[a.status]}` }}>
       <div style={{ width: 80, height: 80, borderRadius: 22, display: 'grid', placeItems: 'center', background: 'rgba(41,181,232,.1)', border: '1px solid rgba(41,181,232,.35)', color: '#7dd8f7' }}><I.Cpu size={34} /></div>
@@ -343,7 +411,7 @@ export function AssetDetail() {
           <Field k="Cliente" v={<Link to={`/portal/360/clientes/${cu.id}`} style={{ color: '#7dd8f7' }}>{cu.name.split(' — ')[0]} →</Link>} /><Field k="Localização" v={a.site} /><Field k="Comissionamento" v={a.commissioned} /><Field k="Garantia" v={a.warrantyUntil} />
         </div>
       </div>
-      <Ring v={a.health} label="Índice de saúde" size={104} />
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}><ReportBtn onClick={report} /><Ring v={a.health} label="Índice de saúde" size={104} /></div>
     </div>
     <div className="grid kpis" style={{ marginTop: 18 }}>
       <KpiCard i={0} k={{ label: 'Vida útil remanescente', value: a.prediction.rul, delta: 'Cortex ML', up: true, good: a.status !== 'critico' }} />
@@ -370,7 +438,7 @@ export function AssetDetail() {
           {cur && <div style={{ marginBottom: 10 }}><Pill s={cur.status}>{cur.value}</Pill></div>}
           <div style={{ fontSize: 13, lineHeight: 1.6 }}><b>Causa provável:</b> <span className="muted">{a.prediction.driver}</span></div>
           <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8 }}><b>Ação recomendada:</b> <span className="muted">{a.prediction.action}</span></div>
-          {a.status !== 'ok' && <button className="btn" style={{ marginTop: 14, padding: '8px 14px', fontSize: 13 }} onClick={() => nav('/portal/decisoes')}><I.Zap size={14} /> Abrir no fluxo de decisão</button>}
+          {a.status !== 'ok' && <button className="btn" style={{ marginTop: 14, padding: '8px 14px', fontSize: 13 }} onClick={() => { toast('action', 'Caso aberto no fluxo de decisão', `${a.id} · ${a.prediction.action.split('.')[0]}`); setTimeout(() => nav('/portal/decisoes'), 600); }}><I.Zap size={14} /> Abrir no fluxo de decisão</button>}
         </Card>
       </div>
     </div>}
@@ -380,7 +448,7 @@ export function AssetDetail() {
     {tab === 'ficha' && <div style={two}>
       <DataTable title="Características técnicas" source="SAP PM · Equipment master" columns={['Parâmetro', 'Valor']} rows={a.specs.map(([k, v]) => ({ 'Parâmetro': k, Valor: v }))} />
       <Card title="Documentação">{a.documents.map(([n, t]) => <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-        <I.FileText size={18} color="#7dd8f7" /><span style={{ flex: 1, fontSize: 14 }}>{n}</span><span className="chip muted" style={{ fontSize: 11 }}>{t}</span><I.Download size={15} className="muted" /></div>)}</Card>
+        <I.FileText size={18} color="#7dd8f7" /><span style={{ flex: 1, fontSize: 14 }}>{n}</span><span className="chip muted" style={{ fontSize: 11 }}>{t}</span><button className="chip" onClick={() => doc(n)} title="Transferir"><I.Download size={13} /> Transferir</button></div>)}</Card>
     </div>}
 
     {tab === 'hist' && <Card title="Histórico de intervenções"><Timeline items={a.history.map(h => {

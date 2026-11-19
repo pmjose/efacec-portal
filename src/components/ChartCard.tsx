@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, TrendingUp, Lightbulb, Zap, X, Check } from 'lucide-react';
+import { Sparkles, TrendingUp, Lightbulb, Zap, X, Check, Download } from 'lucide-react';
+import { useToast } from '../ui/toast';
+import { downloadCsv } from '../utils/download';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import type { Chart } from '../data/domains';
 
@@ -32,13 +34,22 @@ export default function ChartCard({ c }: { c: Chart }) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'think' | 'done'>('idle');
   const [acted, setActed] = useState(false);
+  const toast = useToast();
+  const exportData = () => {
+    const cols = ['m', ...c.keys];
+    downloadCsv(c.title, [{ title: c.title, columns: cols, rows: c.data.map(r => Object.fromEntries(cols.map(k => [k === 'm' ? 'Período' : k, r[k]]))) }].map(s => ({ ...s, columns: s.columns.map(k => k === 'm' ? 'Período' : k) })));
+    toast('download', 'Dados exportados', `${c.title} · ${c.data.length} linhas em CSV`);
+  };
   const ask = () => { setOpen(true); if (phase === 'idle') { setPhase('think'); setTimeout(() => setPhase('done'), 1400); } };
 
   return (
     <div className="glass" style={{ padding: 22, position: 'relative', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 14 }}>
         <div><div style={{ fontWeight: 600 }}>{c.title}</div><div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{c.subtitle}</div></div>
-        <button onClick={ask} className="chip" style={{ borderColor: 'rgba(41,181,232,.5)', color: '#7dd8f7' }}><Sparkles size={13} /> Cortex AI</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={exportData} className="chip muted" title="Exportar dados (CSV)"><Download size={13} /></button>
+          <button onClick={ask} className="chip" style={{ borderColor: 'rgba(41,181,232,.5)', color: '#7dd8f7' }}><Sparkles size={13} /> Cortex AI</button>
+        </div>
       </div>
       <div style={{ height: 250 }}><ResponsiveContainer><Viz c={c} /></ResponsiveContainer></div>
 
@@ -62,7 +73,7 @@ export default function ChartCard({ c }: { c: Chart }) {
                       <div><b style={{ color: col as string }}>{t as string}</b><div>{txt as string}</div></div>
                     </motion.div>);
                 })}
-                <button className={acted ? 'btn-ghost' : 'btn'} style={{ justifySelf: 'start', padding: '8px 14px', fontSize: 13 }} onClick={() => setActed(true)}>
+                <button className={acted ? 'btn-ghost' : 'btn'} style={{ justifySelf: 'start', padding: '8px 14px', fontSize: 13 }} onClick={() => { if (acted) return; setActed(true); toast('action', 'Ação enviada para aprovação', `${c.action} · atribuída ao responsável do domínio`); }}>
                   {acted ? <><Check size={14} /> Enviado para fluxo de aprovação</> : <><Zap size={14} /> Executar ação</>}
                 </button>
               </div>

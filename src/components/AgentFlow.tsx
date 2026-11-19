@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, UserCheck, Play, Check, X, Loader2, RotateCcw } from 'lucide-react';
 import type { Agent } from '../data/domains';
+import { useToast } from '../ui/toast';
 
 export default function AgentFlow({ a }: { a: Agent }) {
   const [step, setStep] = useState(-1);
   const [decision, setDecision] = useState<'pend' | 'ok' | 'no'>('pend');
+  const toast = useToast();
   const approvalIdx = a.steps.findIndex(s => s.title === 'Aprovação');
   const waiting = a.mode === 'humano' && step === approvalIdx && decision === 'pend';
 
@@ -17,6 +19,7 @@ export default function AgentFlow({ a }: { a: Agent }) {
 
   const run = () => { setDecision('pend'); setStep(0); };
   const done = step === a.steps.length - 1;
+  useEffect(() => { if (done) toast('success', `Agente concluído · ${a.name}`, a.steps[a.steps.length - 1].detail); }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="glass" style={{ padding: 22 }}>
@@ -57,8 +60,8 @@ export default function AgentFlow({ a }: { a: Agent }) {
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 10, padding: 12, borderRadius: 12, background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.3)' }}>
                     <div style={{ fontSize: 12, marginBottom: 8 }}>Aprovador: <b>{a.approver}</b></div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { setDecision('ok'); setStep(s => s + 1); }}><Check size={13} /> Aprovar</button>
-                      <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setDecision('no')}><X size={13} /> Rejeitar</button>
+                      <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { setDecision('ok'); setStep(s => s + 1); toast('action', 'Decisão aprovada', `${a.approver?.split(' — ')[0]} aprovou: ${a.name}`); }}><Check size={13} /> Aprovar</button>
+                      <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { setDecision('no'); toast('info', 'Decisão rejeitada', `Fluxo "${a.name}" encerrado e registado no histórico de auditoria.`); }}><X size={13} /> Rejeitar</button>
                     </div>
                   </motion.div>
                 )}

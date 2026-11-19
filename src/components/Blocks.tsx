@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Info, AlertCircle, ArrowRight, Database } from 'lucide-react';
+import { AlertTriangle, Info, AlertCircle, ArrowRight, Database, Download } from 'lucide-react';
+import { useToast } from '../ui/toast';
+import { downloadCsv } from '../utils/download';
 import type { Block, Insight } from '../data/modules';
 import { KpiCard } from '../ui/kit';
 import ChartCard from './ChartCard';
@@ -10,6 +12,7 @@ import { applyChart, applyKpi, useFilters } from '../filters';
 const SEV = { alta: ['#ef4444', AlertTriangle, 'Prioridade alta'], media: ['#f59e0b', AlertCircle, 'Atenção'], info: ['#29B5E8', Info, 'Oportunidade'] } as const;
 
 export function Insights({ items }: { items: Insight[] }) {
+  const toast = useToast();
   return (
     <div className="glass" style={{ padding: 20 }}>
       <div style={{ fontWeight: 600, marginBottom: 14, display: 'flex', justifyContent: 'space-between' }}>Insights Cortex <span className="chip muted">Gerados há 12 min</span></div>
@@ -24,7 +27,7 @@ export function Insights({ items }: { items: Insight[] }) {
               <div className="muted" style={{ fontSize: 13, lineHeight: 1.5, flex: 1 }}>{it.text}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginTop: 4 }}>
                 <span className="muted">{it.owner}</span>
-                <button style={{ color: col, display: 'flex', gap: 4, alignItems: 'center', fontSize: 12 }}>{it.cta} <ArrowRight size={12} /></button>
+                <button onClick={() => toast(it.sev === 'alta' ? 'action' : 'info', it.cta, `${it.title} · encaminhado para ${it.owner}`)} style={{ color: col, display: 'flex', gap: 4, alignItems: 'center', fontSize: 12 }}>{it.cta} <ArrowRight size={12} /></button>
               </div>
             </motion.div>
           );
@@ -60,10 +63,12 @@ function Funnel({ title, stages }: { title: string; stages: [string, number, str
 const statusOf = (s: string) => /Crít|Atras|Cr[ií]tico|↓/.test(s) ? 'critico' : /Aviso|Aguarda|Em análise|risco/i.test(s) ? 'aviso' : /Baixo|Concluída|Fechada|Confirmada|↑/.test(s) ? 'ok' : null;
 
 export function DataTable({ title, columns, rows, source }: { title: string; columns: string[]; rows: Record<string, string>[]; source?: string }) {
+  const toast = useToast();
+  const dl = () => { downloadCsv(title, [{ title, columns, rows }]); toast('download', 'Tabela exportada', `${title} · ${rows.length} linhas em CSV`); };
   return (
     <div className="glass" style={{ padding: 8 }}>
       <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <b>{title}</b>{source && <span className="chip muted"><Database size={12} /> {source}</span>}
+        <b>{title}</b><span style={{ display: 'flex', gap: 6 }}>{source && <span className="chip muted"><Database size={12} /> {source}</span>}<button className="chip muted" onClick={dl} title="Exportar CSV"><Download size={12} /> CSV</button></span>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table className="t">

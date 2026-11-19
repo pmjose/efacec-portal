@@ -6,6 +6,7 @@ import { modules, findModule, allAgents } from '../data/modules';
 import { customers, employees, assets, findCustomer, findEmployee, findAsset } from '../data/c360';
 import { executiveQuestions } from '../data/domains';
 import ChatPanel from '../components/ChatPanel';
+import { useToast } from '../ui/toast';
 import { FiltersProvider, useFilters, BUS, REGIONS, isFiltered } from '../filters';
 
 export function Icon({ name, size = 18, color }: { name: string; size?: number; color?: string }) {
@@ -71,6 +72,7 @@ function FilterBar() {
 
 function Shell() {
   const loc = useLocation();
+  const toast = useToast();
   const [, , slug, section, entity] = loc.pathname.split('/');
   const m = findModule(slug);
   const is360 = slug === '360';
@@ -122,7 +124,7 @@ function Shell() {
           <GlobalSearch />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <span className="chip"><span className="dot ok" /> Dados em tempo real</span>
-            <span className="chip"><Icons.Bell size={13} /> 3</span>
+            <button className="chip" onClick={() => { toast('info', 'Alerta crítico · Supply Chain', 'Rutura de aço GO em 23 dias (ThyssenKrupp)'); setTimeout(() => toast('info', 'Alerta crítico · Serviços', 'TP-DOM-0336 com ponto quente a 108 °C'), 350); setTimeout(() => toast('info', 'Alerta crítico · Comercial', 'Concurso REN 400 kV fecha em 9 dias'), 700); }}><Icons.Bell size={13} /> 3</button>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
